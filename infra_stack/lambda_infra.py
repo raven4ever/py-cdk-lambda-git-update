@@ -1,15 +1,24 @@
-from aws_cdk import core as cdk
-
-# For consistency with other languages, `cdk` is the preferred import name for
-# the CDK's core module.  The following line also imports it as `core` for use
-# with examples from the CDK Developer's Guide, which are in the process of
-# being updated to use `cdk`.  You may delete this import if you don't need it.
-from aws_cdk import core
+from aws_cdk import (
+    core,
+    aws_lambda as lmdb,
+    aws_apigateway as apigw,
+)
 
 
-class LambdaStack(cdk.Stack):
+class LambdaStack(core.Stack):
 
-    def __init__(self, scope: cdk.Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
+        # API GW definition
+        api = apigw.RestApi(self, 'API-GW')
+
+        # Create function
+        updateFunction = lmdb.Function(self, 'Github-Update-Function',
+                                       function_name='Github-Update-Function',
+                                       runtime=lmdb.Runtime.PYTHON_3_8,
+                                       code=lmdb.Code.from_asset(path='lambda/github_update'),
+                                       handler='main.handler')
+
+        gwIntegration = apigw.LambdaIntegration(updateFunction)
+        api.root.add_resource('update').add_method('POST', gwIntegration)
