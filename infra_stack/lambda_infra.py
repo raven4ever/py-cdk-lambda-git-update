@@ -3,6 +3,7 @@ from aws_cdk import (
     aws_lambda as lmdb,
     aws_apigateway as apigw,
 )
+from aws_cdk.aws_lambda_python import PythonFunction
 
 
 class LambdaStack(core.Stack):
@@ -14,11 +15,17 @@ class LambdaStack(core.Stack):
         api = apigw.RestApi(self, 'API-GW')
 
         # Create function
-        updateFunction = lmdb.Function(self, 'Github-Update-Function',
-                                       function_name='Github-Update-Function',
-                                       runtime=lmdb.Runtime.PYTHON_3_8,
-                                       code=lmdb.Code.from_asset(path='lambda/github_update'),
-                                       handler='main.handler')
+        updateFunction = PythonFunction(self, 'Github-Update-Function',
+                                        function_name='Github-Update-Function',
+                                        runtime=lmdb.Runtime.PYTHON_3_8,
+                                        index='main.py',
+                                        handler='lambda_handler',
+                                        entry='lambda/github_update',
+                                        current_version_options=lmdb.VersionOptions(
+                                            removal_policy=core.RemovalPolicy.RETAIN)
+                                        )
+
+        dev = lmdb.Alias(self, 'development', alias_name='development', version=updateFunction.current_version)
 
         gwIntegration = apigw.LambdaIntegration(updateFunction)
         api.root.add_resource('update').add_method('POST', gwIntegration)
